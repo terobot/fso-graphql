@@ -1,0 +1,15 @@
+{
+  "name": "library-backend",
+  "version": "0.0.1",
+  "description": "Full Stack Open 2019 - GraphQL library-backend",
+  "main": "library-backend.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tero Könönen",
+  "license": "MIT",
+  "dependencies": {
+    "apollo-server": "^2.9.7",
+    "graphql": "^14.5.8"
+  }
+}
