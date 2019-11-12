@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import Select from 'react-select';
 
 const Authors = (props) => {
   const [name, setName] = useState('')
@@ -21,9 +22,12 @@ const Authors = (props) => {
       variables: { name, born: bornInt }
     })
 
-    setName('')
     setBorn('')
   }
+
+  const options = authors.map(a => {
+    return { value: a.name, label: a.name }
+  })
 
   return (
     <div>
@@ -52,10 +56,12 @@ const Authors = (props) => {
       <h2>Set birthyear</h2>
       <form onSubmit={submit}>
         <div>
-          name
-          <input
-            value={name}
-            onChange={({ target }) => setName(target.value)}
+          <Select
+            value={options.find(o => o.value === name)}
+            onChange={({ value }) => {
+              setName(value)
+            }}
+            options={options}
           />
         </div>
         <div>
