@@ -1,1 +1,4 @@
 queries*
+.env
+node_modules
+temp*
