@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
+import { Query, ApolloConsumer } from 'react-apollo'
 import { gql } from 'apollo-boost'
-import { useQuery, useMutation } from '@apollo/react-hooks'
+import { useQuery, useMutation, useApolloClient } from '@apollo/react-hooks'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
+import Login from './components/Login'
+import Recommendations from './components/Recommendations'
 
 const ALL_AUTHORS = gql`
   {
@@ -18,8 +21,9 @@ const ALL_BOOKS = gql`
   {
     allBooks { 
       title 
-      author
+      author {name}
       published
+      genres
     }
   }
 `
@@ -33,7 +37,7 @@ const CREATE_BOOK = gql`
       genres: $genres
     ) {
       title,
-      author,
+      author {name},
       published,
       genres
     }
@@ -49,45 +53,138 @@ const EDIT_AUTHOR = gql`
   }
 `
 
+const LOGIN = gql`
+  mutation login($username: String!, $password: String!) {
+    login(username: $username, password: $password)  {
+      value
+    }
+  }
+`
+
+const ME = gql`
+  {
+    me {
+      username,
+      favoriteGenre
+    }
+  }
+`
+
 const App = () => {
   const [page, setPage] = useState('authors')
+  const [token, setToken] = useState(localStorage.getItem('user-token'))
+  const [errorMessage, setErrorMessage] = useState(null)
+
+  const handleError = (error) => {
+    console.log(error.graphQLErrors)
+    if (error.graphQLErrors.length > 0) {
+      setErrorMessage(error.graphQLErrors[0].message)
+    }
+    setTimeout(() => {
+      setErrorMessage(null)
+    }, 10000)
+  }
+
+  const client = useApolloClient()
 
   const authors = useQuery(ALL_AUTHORS)
   const books = useQuery(ALL_BOOKS)
+  const user = useQuery(ME, {
+    pollInterval: 1000
+  })
   const [addBook] = useMutation(CREATE_BOOK, {
     refetchQueries: [
       { query: ALL_BOOKS },
       { query: ALL_AUTHORS }
-    ]
+    ],
+    errorPolicy: 'all',
+    onError: handleError
   })
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
     refetchQueries: [
       { query: ALL_AUTHORS }
-    ]
+    ],
+    errorPolicy: 'all',
+    onError: handleError
   })
 
-  return (
-    <div>
-      <div>
+  const [login] = useMutation(LOGIN, {
+    errorPolicy: 'all',
+    onError: handleError
+  })
+
+  const logout = () => {
+    setToken(null)
+    localStorage.clear()
+    client.resetStore()
+    setPage('authors')
+  }
+
+  const errorNotification = () => errorMessage &&
+    <div style={{ color: 'red' }}>
+      {errorMessage}
+    </div>
+
+  const navigationButtons = (token) => {
+    if (token) {
+      return <div>
         <button onClick={() => setPage('authors')}>authors</button>
         <button onClick={() => setPage('books')}>books</button>
         <button onClick={() => setPage('add')}>add book</button>
+        <button onClick={() => setPage('recommendations')}>recommendations</button>
+        <button onClick={() => logout()}>logout</button>
       </div>
+    }
+    return <div>
+      <button onClick={() => setPage('authors')}>authors</button>
+      <button onClick={() => setPage('books')}>books</button>
+      <button onClick={() => setPage('login')}>login</button>
+    </div>
+  }
+
+  return (
+    <div>
+      {navigationButtons(token)}
+
+      {errorNotification()}
 
       <Authors
         result={authors}
         show={page === 'authors'}
         editAuthor={editAuthor}
+        token={token}
       />
 
-      <Books
-        result={books}
-        show={page === 'books'}
-      />
+      <ApolloConsumer>
+        {(client => 
+          <Query query={ALL_BOOKS}>
+            {(result) => 
+              <Books
+                result={result}
+                client={client}
+                show={page === 'books'}
+              />
+            }
+          </Query> 
+        )}
+      </ApolloConsumer>
 
       <NewBook
         addBook={addBook}
         show={page === 'add'}
+      />
+
+      <Recommendations
+        result={books}
+        user={user}
+        show={page === 'recommendations'}
+      />
+
+      <Login
+        login={login}
+        setToken={setToken}
+        setPage={setPage}
+        show={page === 'login'}
       />
 
     </div>

@@ -29,6 +29,10 @@ const Authors = (props) => {
     return { value: a.name, label: a.name }
   })
 
+  const setBornStyle = {
+    display:props.token ? '' : 'none'
+  }
+
   return (
     <div>
       <h2>authors</h2>
@@ -53,8 +57,8 @@ const Authors = (props) => {
         </tbody>
       </table>
 
-      <h2>Set birthyear</h2>
-      <form onSubmit={submit}>
+      <h2 style={setBornStyle}>Set birthyear</h2>
+      <form style={setBornStyle} onSubmit={submit}>
         <div>
           <Select
             value={options.find(o => o.value === name)}
