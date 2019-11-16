@@ -15,10 +15,12 @@ const FIND_BOOKS = gql`
 const Books = (props) => {
   const [genre, setGenre] = useState('all genres')
   const [booksToShow, setBooksToShow] = useState(null)
+  const [previousBooksCount, setPreviousBooksCount] = useState(null)
 
   if (!props.show) {
     return null
   }
+
   if (props.result.loading) {
     return <div>loading...</div>
   }
@@ -44,8 +46,11 @@ const Books = (props) => {
     )
   }
   const booksTable = (booksToShow) => {
-    if (!booksToShow) {
+    if (!booksToShow || previousBooksCount !== books.length) {
       showGenre(genre)
+      if (previousBooksCount !== books.length) {
+        setPreviousBooksCount(books.length)
+      }
       return null
     }
     return <div>
