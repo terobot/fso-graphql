@@ -1,12 +1,21 @@
 import React, { useState } from 'react'
 import { Query, ApolloConsumer } from 'react-apollo'
 import { gql } from 'apollo-boost'
-import { useQuery, useMutation, useApolloClient } from '@apollo/react-hooks'
+import { useQuery, useMutation, useSubscription, useApolloClient } from '@apollo/react-hooks'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
 import Login from './components/Login'
 import Recommendations from './components/Recommendations'
+
+const BOOK_DETAILS = gql`
+  fragment BookDetails on Book {
+    title 
+    author {name}
+    published
+    genres
+  }
+`
 
 const ALL_AUTHORS = gql`
   {
@@ -70,6 +79,16 @@ const ME = gql`
   }
 `
 
+const BOOK_ADDED = gql`
+  subscription {
+    bookAdded {
+      ...BookDetails
+    }
+  }
+  
+${BOOK_DETAILS}
+`
+
 const App = () => {
   const [page, setPage] = useState('authors')
   const [token, setToken] = useState(localStorage.getItem('user-token'))
@@ -85,12 +104,33 @@ const App = () => {
     }, 10000)
   }
 
+  const updateCacheWith = (addedBook) => {
+    const includedIn = (set, object) => 
+      set.map(p => p.id).includes(object.id)  
+
+    const dataInStore = client.readQuery({ query: ALL_BOOKS })
+    if (!includedIn(dataInStore.allBooks, addedBook)) {
+      client.writeQuery({
+        query: ALL_BOOKS,
+        data: { allBooks : dataInStore.allBooks.concat(addedBook) }
+      })
+    }   
+  }
+
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      const addedBook = subscriptionData.data.bookAdded
+      window.alert(`${addedBook.title} added`)
+      updateCacheWith(addedBook)
+    }
+  })
+
   const client = useApolloClient()
 
   const authors = useQuery(ALL_AUTHORS)
   const books = useQuery(ALL_BOOKS)
   const user = useQuery(ME, {
-    pollInterval: 1000
+    fetchPolicy: 'no-cache'
   })
   const [addBook] = useMutation(CREATE_BOOK, {
     refetchQueries: [
@@ -98,7 +138,10 @@ const App = () => {
       { query: ALL_AUTHORS }
     ],
     errorPolicy: 'all',
-    onError: handleError
+    onError: handleError,
+    update: (store, response) => {
+      updateCacheWith(response.data.addBook)
+    }
   })
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
     refetchQueries: [
